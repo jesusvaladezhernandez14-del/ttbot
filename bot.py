@@ -101,5 +101,6 @@ async def cerrar(ctx):
     else:
         await ctx.send("No hay torneo")
 
-# PEGA TU TOKEN ABAJO
-bot.run("MTU1MjQxNzcwOTA2NzU5OTk2Mg.Giumy3.oZuAzimDgmeQpI4g0-618xQy4UDGqNwe3EhTBY")
+import os
+TOKEN = os.getenv("DISCORD_TOKEN")
+bot.run(TOKEN)
