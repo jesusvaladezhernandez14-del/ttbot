@@ -126,29 +126,36 @@ async def iniciar(ctx):
 @commands.has_permissions(administrator=True)
 async def cerrar(ctx):
     canal = str(ctx.channel.id)
-    if canal not in torneos:
-        return await ctx.send("No hay torneo")
 
-    data = torneos[canal]
-    for cid in data.get("canales", []):
-        ch = ctx.guild.get_channel(cid)
-        if ch:
-            try: await ch.delete()
-            except: pass
-    for rid in data.get("roles", []):
-        r = ctx.guild.get_role(rid)
-        if r:
+    borrados = 0
+    # 1. Borra por NOMBRE, aunque no esté en el json - esto es lo que te fallaba
+    for ch in list(ctx.guild.text_channels):
+        if "grupo-" in ch.name.lower():
             try:
-                for m in list(r.members):
-                    try: await m.remove_roles(r)
-                    except: pass
-                await r.delete()
-            except: pass
+                await ch.delete()
+                borrados += 1
+            except Exception as e:
+                print(f"No se pudo borrar canal {ch.name}: {e}")
 
-    del torneos[canal]
-    with open("torneos.json", "w") as f:
-        json.dump(torneos, f)
-    await ctx.send("✅ Torneo cerrado. Grupos del A a la Z eliminados y roles quitados.")
+    for rol in list(ctx.guild.roles):
+        if rol.name.startswith("Grupo "):
+            try:
+                # quitarle el rol a todos primero
+                for m in list(rol.members):
+                    try: await m.remove_roles(rol)
+                    except: pass
+                await rol.delete()
+                borrados += 1
+            except Exception as e:
+                print(f"No se pudo borrar rol {rol.name}: {e}")
+
+    # 2. Ahora si borra del json
+    if canal in torneos:
+        del torneos[canal]
+        with open("torneos.json", "w") as f:
+            json.dump(torneos, f)
+    await ctx.send(f"✅ Borrados {borrados} grupos/roles. Torneo cerrado.")
+    
 import os
 TOKEN = os.getenv("DISCORD_TOKEN")
 bot.run(TOKEN)
