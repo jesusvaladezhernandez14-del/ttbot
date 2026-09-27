@@ -105,14 +105,37 @@ async def iniciar(ctx, por_sala: int = 48):
 @bot.command()
 @commands.has_permissions(administrator=True)
 async def cerrar(ctx):
-    canal = str(ctx.channel.id)
-    if canal in torneos:
-        del torneos[canal]
+    await ctx.send("Cerrando y borrando todo al instante...")
+
+    # 1. Borra todos los roles que empiezan con "Grupo "
+    for rol in ctx.guild.roles:
+        if rol.name.startswith("Grupo "):
+            try:
+                # Le quita el rol a todos los que lo tienen antes de borrarlo
+                for member in rol.members:
+                    try:
+                        await member.remove_roles(rol)
+                    except:
+                        pass
+                await rol.delete()
+            except:
+                pass
+
+    # 2. Borra todos los canales que empiezan con "grupo-"
+    for canal in ctx.guild.text_channels:
+        if canal.name.startswith("🔒 grupo-") or canal.name.startswith("grupo-"):
+            try:
+                await canal.delete()
+            except:
+                pass
+
+    # 3. Limpia el json
+    if str(ctx.channel.id) in torneos:
+        del torneos[str(ctx.channel.id)]
         with open("torneos.json", "w") as f:
             json.dump(torneos, f)
-        await ctx.send("Torneo cerrado")
-    else:
-        await ctx.send("No hay torneo")
+
+    await ctx.send("✅ Torneo cerrado. Roles y grupos eliminados al instante.")
 
 import os
 TOKEN = os.getenv("DISCORD_TOKEN")
