@@ -84,7 +84,15 @@ async def iniciar(ctx, por_sala: int = 48):
             rol: discord.PermissionOverwrite(view_channel=True, send_messages=True),
             ctx.guild.me: discord.PermissionOverwrite(view_channel=True)
         }
-        canal_grupo = await ctx.guild.create_text_channel(f"🔒grupo-{letra.lower()}", overwrites=overwrites)
+        canal_grupo = await ctx.guild.create_text_channel     # Guardamos los IDs para poder borrarlos después sin fallar
+    if "grupos_creados" not in torneos[canal]:
+        torneos[canal]["grupos_creados"] = {"roles": [], "canales": []}
+
+    torneos[canal]["grupos_creados"]["roles"].append(rol.id)
+    torneos[canal]["grupos_creados"]["canales"].append(canal_grupo.id)
+
+    with open("torneos.json", "w") as f:
+        json.dump(torneos, f)(f"🔒grupo-{letra.lower()}", overwrites=overwrites)
 
         inicio = i * por_sala
         fin = inicio + por_sala
@@ -105,37 +113,49 @@ async def iniciar(ctx, por_sala: int = 48):
 @bot.command()
 @commands.has_permissions(administrator=True)
 async def cerrar(ctx):
-    await ctx.send("Cerrando y borrando todo al instante...")
+    canal_id = str(ctx.channel.id)
 
-    # 1. Borra todos los roles que empiezan con "Grupo "
+    if canal_id not in torneos:
+        await ctx.send("No hay torneo aquí")
+        return
+
+    await ctx.send("⏳ Borrando todo al instante...")
+
+    data = torneos[canal_id].get("grupos_creados", {})
+
+    # Borra canales por ID
+    for cid in data.get("canales", []):
+        c = ctx.guild.get_channel(cid)
+        if c:
+            try: await c.delete()
+            except: pass
+
+    # Borra roles por ID y les quita el rol a los jugadores
+    for rid in data.get("roles", []):
+        r = ctx.guild.get_role(rid)
+        if r:
+            try:
+                for m in r.members:
+                    try: await m.remove_roles(r)
+                    except: pass
+                await r.delete()
+            except: pass
+
+    # Por si quedaron algunos con el nombre viejo
     for rol in ctx.guild.roles:
         if rol.name.startswith("Grupo "):
-            try:
-                # Le quita el rol a todos los que lo tienen antes de borrarlo
-                for member in rol.members:
-                    try:
-                        await member.remove_roles(rol)
-                    except:
-                        pass
-                await rol.delete()
-            except:
-                pass
-
-    # 2. Borra todos los canales que empiezan con "grupo-"
+            try: await rol.delete()
+            except: pass
     for canal in ctx.guild.text_channels:
-        if canal.name.startswith("🔒 grupo-") or canal.name.startswith("grupo-"):
-            try:
-                await canal.delete()
-            except:
-                pass
+        if "grupo-" in canal.name:
+            try: await canal.delete()
+            except: pass
 
-    # 3. Limpia el json
-    if str(ctx.channel.id) in torneos:
-        del torneos[str(ctx.channel.id)]
-        with open("torneos.json", "w") as f:
-            json.dump(torneos, f)
+    del torneos[canal_id]
+    with open("torneos.json", "w") as f:
+        json.dump(torneos, f)
 
-    await ctx.send("✅ Torneo cerrado. Roles y grupos eliminados al instante.")
+    await ctx.send("✅ Todo eliminado al instante y jugadores sin rol.")
 
 import os
 TOKEN = os.getenv("DISCORD_TOKEN")
