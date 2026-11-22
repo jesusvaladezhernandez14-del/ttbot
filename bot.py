@@ -26,8 +26,8 @@ threading.Thread(target=run_web, daemon=True).start()
 TOKEN = os.getenv("DISCORD_TOKEN")
 PREFIX = "!"
 DATA_FILE = "torneos.json"
-MAX_JUGADORES = 128
-MIN_JUGADORES = 2
+MAX_JUGADORES = 336
+MIN_JUGADORES = 30
 COOLDOWN_UNIRME = 5
 ADMIN_ROL_NOMBRE = "Admin Torneo"
 
